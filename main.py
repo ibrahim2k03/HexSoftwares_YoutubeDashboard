@@ -1,17 +1,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.figure_factory as ff
 from googleapiclient.discovery import build
 import isodate
+import numpy as np
 
 st.set_page_config(layout="wide")
 api_key = st.secrets["api_key"]["myAPIKey"]
 
-
 st.markdown(
     """
     <style>
-        /* Reduce the default padding/margins */
         .block-container {
             padding-top: 1rem;
             padding-bottom: 1rem;
@@ -23,12 +23,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-
-
-
 API = api_key 
-
 youtube = build("youtube", "v3", developerKey=API)
 
 def channelStats(channelID):
@@ -38,7 +33,6 @@ def channelStats(channelID):
             id=channelID
         )
         response = request.execute()
-        
         stats = response["items"][0]["statistics"]
         return {
             "Subscribers": int(stats["subscriberCount"]),
@@ -63,7 +57,9 @@ def getTopVideos(channelID):
         
         videoData = []
         for video in response["items"]:
-            videoID = video["id"]["videoId"]
+            videoID = video["id"].get("videoId")
+            if not videoID:
+                continue
             
             videoRequest = youtube.videos().list(
                 part="statistics,contentDetails",
@@ -77,19 +73,17 @@ def getTopVideos(channelID):
                 
                 videoData.append({
                     "Title": video["snippet"]["title"],
-                    "Views": int(stats["viewCount"]),
+                    "Views": int(stats.get("viewCount", 0)),
                     "Likes": int(stats.get("likeCount", 0)),
                     "Comments": int(stats.get("commentCount", 0)),
                     "Duration (s)": duration,
-                    "Like-to-View Ratio": round(int(stats.get("likeCount", 0)) / int(stats["viewCount"]), 5) if int(stats["viewCount"]) > 0 else 0,
-                    "Comment-to-View Ratio": round(int(stats.get("commentCount", 0)) / int(stats["viewCount"]), 5) if int(stats["viewCount"]) > 0 else 0
+                    "Like-to-View Ratio": round(int(stats.get("likeCount", 0)) / int(stats.get("viewCount", 1)), 5),
+                    "Comment-to-View Ratio": round(int(stats.get("commentCount", 0)) / int(stats.get("viewCount", 1)), 5)
                 })
-        
         return videoData
     except Exception as e:
         st.error(f"Error fetching top videos: {e}")
         return []
-
 
 # ---------------------- User Interface ---------------------- #
 st.title("📊 HexSoftwares YouTube Data Dashboard")
@@ -114,27 +108,30 @@ if st.sidebar.button("Get Data"):
         df_videos = pd.DataFrame(topVideos)
         st.dataframe(df_videos)
         
+        # Additional statistics
+        df_videos['Log Views'] = np.log1p(df_videos['Views'])
+        df_videos['Log Likes'] = np.log1p(df_videos['Likes'])
+        
         # Bar Chart: Top Performing Videos by Views
         fig1 = px.bar(df_videos, x="Title", y="Views", title="Top Performing Videos", text="Views", color="Likes")
         fig1.update_traces(texttemplate='%{text}', textposition='outside')
-        fig1.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig1)
         
-        # Bubble Chart: Views vs. Likes (Size = Comments)
-        fig2 = px.scatter(df_videos, x="Views", y="Likes", size="Comments", title="Views vs. Likes (Bubble Size = Comments)", hover_data=["Title"])
-        fig2.update_layout(autosize=True, width=None, height=1000)        
+        # Scatter Plot: Likes vs. Views
+        fig2 = px.scatter(df_videos, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
         st.plotly_chart(fig2)
         
         # Bar Chart: Video Duration vs. Views
         fig3 = px.bar(df_videos, x="Title", y="Views", title="Video Duration vs. Views", color="Duration (s)", text="Views")
         fig3.update_traces(texttemplate='%{text}', textposition='outside')
-        fig3.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig3)
         
         # Heatmap: Correlation between Views, Likes, Comments, and Duration
         dfCorr = df_videos[["Views", "Likes", "Comments", "Duration (s)"]].corr()
         fig4 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
-        fig4.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig4)
         
-        
+        # Distribution Plot: Log-transformed Views and Likes
+        fig5 = ff.create_distplot([df_videos['Log Views'], df_videos['Log Likes']], ['Log Views', 'Log Likes'], show_hist=False)
+        fig5.update_layout(title="📊 Distribution of Log-Transformed Views and Likes")
+        st.plotly_chart(fig5)

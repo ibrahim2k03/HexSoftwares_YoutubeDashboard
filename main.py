@@ -119,23 +119,23 @@ if st.sidebar.button("Get Data"):
         # Bar Chart: Top Performing Videos by Views
         fig1 = px.bar(df_videos, x="Title", y="Views", title="Top Performing Videos", text="Views", color="Likes")
         fig1.update_traces(texttemplate='%{text}', textposition='outside')
+        fig1.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig1)
         
         # Scatter Plot: Likes vs. Views
         fig2 = px.scatter(df_videos, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
+        fig2.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig2)
         
         # Bar Chart: Video Duration vs. Views
         fig3 = px.bar(df_videos, x="Title", y="Views", title="Video Duration vs. Views", color="Duration (s)", text="Views")
         fig3.update_traces(texttemplate='%{text}', textposition='outside')
+        fig3.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig3)
         
         # Heatmap: Correlation between Views, Likes, Comments, and Duration
         dfCorr = df_videos[["Views", "Likes", "Comments", "Duration (s)"]].corr()
         fig4 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
+        fig4.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig4)
         
-        # Distribution Plot: Log-transformed Views and Likes
-        fig5 = ff.create_distplot([df_videos['Log Views'], df_videos['Log Likes']], ['Log Views', 'Log Likes'], show_hist=False)
-        fig5.update_layout(title="📊 Distribution of Log-Transformed Views and Likes")
-        st.plotly_chart(fig5)

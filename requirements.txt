@@ -1,2 +1,3 @@
 plotly
 google-api-python-client
+isodate

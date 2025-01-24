@@ -8,6 +8,8 @@ import numpy as np
 
 st.set_page_config(layout="wide")
 api_key = st.secrets["api_key"]["myAPIKey"]
+API = api_key
+
 
 st.markdown(
     """
@@ -18,12 +20,19 @@ st.markdown(
             padding-left: 5rem;
             padding-right: 5rem;
         }
+        
+        @media screen and (max-width: 768px) {
+            .block-container {
+                padding: 1rem !important;
+            }
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-API = api_key 
+
+
 youtube = build("youtube", "v3", developerKey=API)
 
 def channelStats(channelID):
@@ -97,45 +106,68 @@ if st.sidebar.button("Get Data"):
     
     if stats:
         st.subheader("📌 Channel Statistics")
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
-        col1.metric("Subscribers", stats["Subscribers"])
-        col2.metric("Total Views", stats["Total Views"])
-        col3.metric("Total Videos", stats["Total Videos"])
-        col4.metric("Avg Views per Video", round(stats["Average Views per Video"]))
-        col5.metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
-        col6.metric("Engagement Rate", round(stats["Engagement Rate"], 5))
+        
+        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(6)
+
+        cols[0].metric("Subscribers", stats["Subscribers"])
+        cols[1].metric("Total Views", stats["Total Views"])
+        cols[2].metric("Total Videos", stats["Total Videos"])
+        cols[3].metric("Avg Views per Video", round(stats["Average Views per Video"]))
+        cols[4].metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
+        cols[5].metric("Engagement Rate", round(stats["Engagement Rate"], 5))
+
+        
+        
+        #col1, col2, col3, col4, col5, col6 = st.columns(6)
+        #col1.metric("Subscribers", stats["Subscribers"])
+        #col2.metric("Total Views", stats["Total Views"])
+        #col3.metric("Total Videos", stats["Total Videos"])
+        #col4.metric("Avg Views per Video", round(stats["Average Views per Video"]))
+        #col5.metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
+        #col6.metric("Engagement Rate", round(stats["Engagement Rate"], 5))
     
     topVideos = getTopVideos(channelID)
     
     if topVideos:
-        st.subheader("🎬 Top 100 Videos by Views")
-        df_videos = pd.DataFrame(topVideos)
-        st.dataframe(df_videos)
+        st.subheader("🎬 Top 100 Videos")
+        videosDf = pd.DataFrame(topVideos)
+        st.dataframe(videosDf)
         
         # Additional statistics
-        df_videos['Log Views'] = np.log1p(df_videos['Views'])
-        df_videos['Log Likes'] = np.log1p(df_videos['Likes'])
+        videosDf['Log Views'] = np.log1p(videosDf['Views'])
+        videosDf['Log Likes'] = np.log1p(videosDf['Likes'])
         
-        # Bar Chart: Top Performing Videos by Views
-        fig1 = px.bar(df_videos, x="Title", y="Views", title="Top Performing Videos", text="Views", color="Likes")
+
+        # Restrict to top 10 videos for bar charts
+        top10_videosDf = videosDf.nlargest(10, 'Views')
+
+
+
+
+
+
+        # Bar Chart: Top 10 Performing Videos by Views
+        fig1 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Performing Videos", text="Views", color="Likes")
         fig1.update_traces(texttemplate='%{text}', textposition='outside')
         fig1.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig1)
         
         # Scatter Plot: Likes vs. Views
-        fig2 = px.scatter(df_videos, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
+        fig2 = px.scatter(videosDf, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
         fig2.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig2)
         
-        # Bar Chart: Video Duration vs. Views
-        fig3 = px.bar(df_videos, x="Title", y="Views", title="Video Duration vs. Views", color="Duration (s)", text="Views")
+        # Bar Chart: Top 10 Video Duration vs. Views
+        fig3 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Video Duration vs. Views", color="Duration (s)", text="Views")
         fig3.update_traces(texttemplate='%{text}', textposition='outside')
-        fig3.update_layout(autosize=True, width=None, height=1000)
+        fig3.update_layout(autosize=True, width=None, height=600)
         st.plotly_chart(fig3)
         
         # Heatmap: Correlation between Views, Likes, Comments, and Duration
-        dfCorr = df_videos[["Views", "Likes", "Comments", "Duration (s)"]].corr()
+        dfCorr = videosDf[["Views", "Likes", "Comments", "Duration (s)"]].corr()
         fig4 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
         fig4.update_layout(autosize=True, width=None, height=1000)
         st.plotly_chart(fig4)
+        
+        
         

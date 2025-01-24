@@ -39,7 +39,9 @@ def channelStats(channelID):
             "Total Views": int(stats["viewCount"]),
             "Total Videos": int(stats["videoCount"]),
             "Subscribers from Views": int(stats["subscriberCount"])/int(stats["viewCount"]),
-            "Average Views per Video": int(stats["viewCount"]) / int(stats["videoCount"])
+            "Average Views per Video": int(stats["viewCount"]) / int(stats["videoCount"]),
+            "Views per Subscriber": int(stats["viewCount"]) / int(stats["subscriberCount"]),
+            "Engagement Rate": (int(stats.get("likeCount", 0)) + int(stats.get("commentCount", 0))) / int(stats["viewCount"])
         }
     except Exception as e:
         st.error(f"Error fetching channel data: {e}")
@@ -95,11 +97,13 @@ if st.sidebar.button("Get Data"):
     
     if stats:
         st.subheader("📌 Channel Statistics")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         col1.metric("Subscribers", stats["Subscribers"])
         col2.metric("Total Views", stats["Total Views"])
         col3.metric("Total Videos", stats["Total Videos"])
         col4.metric("Avg Views per Video", round(stats["Average Views per Video"]))
+        col5.metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
+        col6.metric("Engagement Rate", round(stats["Engagement Rate"], 5))
     
     topVideos = getTopVideos(channelID)
     

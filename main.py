@@ -5,6 +5,8 @@ from googleapiclient.discovery import build
 import isodate
 
 st.set_page_config(layout="wide")
+api_key = st.secrets["api_key"]["myAPIKey"]
+
 
 st.markdown(
     """
@@ -25,7 +27,7 @@ st.markdown(
 
 
 
-API = "" 
+API = api_key 
 
 youtube = build("youtube", "v3", developerKey=API)
 

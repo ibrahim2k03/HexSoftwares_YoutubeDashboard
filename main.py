@@ -103,7 +103,7 @@ def getTopVideos(channelID):
         return []
 
 # ---------------------- User Interface ---------------------- #
-st.title("📊 HexSoftwares YouTube Data Dashboard")
+st.title("📊 YouTube Data Dashboard")
 
 channelID = st.sidebar.text_input("Enter YouTube Channel ID", "UCphTF9wHwhCt-BzIq-s4V-g")
 

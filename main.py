@@ -43,26 +43,32 @@ def channelStats(channelID):
         )
         response = request.execute()
         stats = response["items"][0]["statistics"]
+        
+        # Fetch total likes and comments from the top videos
+        topVideos = getTopVideos(channelID)
+        total_likes = sum(video['Likes'] for video in topVideos)
+        total_comments = sum(video['Comments'] for video in topVideos)
+        
         return {
             "Subscribers": int(stats["subscriberCount"]),
-            "Total Views": int(stats["viewCount"]),
             "Total Videos": int(stats["videoCount"]),
-            "Subscribers from Views": int(stats["subscriberCount"])/int(stats["viewCount"]),
+            "Subscribers from Views": f"{(int(stats['subscriberCount']) / int(stats['viewCount'])) * 100:.2f}%", 
+            "Likes from Views": f"{(total_likes / int(stats['viewCount'])) * 100:.2f}%",
             "Average Views per Video": int(stats["viewCount"]) / int(stats["videoCount"]),
-            "Views per Subscriber": int(stats["viewCount"]) / int(stats["subscriberCount"]),
-            "Engagement Rate": (int(stats.get("likeCount", 0)) + int(stats.get("commentCount", 0))) / int(stats["viewCount"])
-        }
+            "Average Likes per Video": total_likes / int(stats["videoCount"]),
+            "Average Comments per Video": total_comments / int(stats["videoCount"]),
+            }
     except Exception as e:
         st.error(f"Error fetching channel data: {e}")
         return None
-
+    
 def getTopVideos(channelID):
     try:
         request = youtube.search().list(
             part="snippet",
             channelId=channelID,
             order="viewCount",
-            maxResults=100  
+            maxResults=50  
         )
         response = request.execute()
         
@@ -107,29 +113,20 @@ if st.sidebar.button("Get Data"):
     if stats:
         st.subheader("📌 Channel Statistics")
         
-        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(6)
+        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(7)
 
         cols[0].metric("Subscribers", stats["Subscribers"])
-        cols[1].metric("Total Views", stats["Total Views"])
-        cols[2].metric("Total Videos", stats["Total Videos"])
-        cols[3].metric("Avg Views per Video", round(stats["Average Views per Video"]))
-        cols[4].metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
-        cols[5].metric("Engagement Rate", round(stats["Engagement Rate"], 5))
-
-        
-        
-        #col1, col2, col3, col4, col5, col6 = st.columns(6)
-        #col1.metric("Subscribers", stats["Subscribers"])
-        #col2.metric("Total Views", stats["Total Views"])
-        #col3.metric("Total Videos", stats["Total Videos"])
-        #col4.metric("Avg Views per Video", round(stats["Average Views per Video"]))
-        #col5.metric("Views per Subscriber", round(stats["Views per Subscriber"], 2))
-        #col6.metric("Engagement Rate", round(stats["Engagement Rate"], 5))
+        cols[1].metric("Total Videos", stats["Total Videos"])
+        cols[2].metric("Subscribers from Views", stats["Subscribers from Views"],)
+        cols[3].metric("Likes from Views", stats["Likes from Views"])
+        cols[4].metric("Avg Views per Video", round(stats["Average Views per Video"]))
+        cols[5].metric("Avg Likes per Video", round(stats["Average Likes per Video"]))
+        cols[6].metric("Avg Comments per Video", round(stats["Average Comments per Video"]))
     
     topVideos = getTopVideos(channelID)
     
     if topVideos:
-        st.subheader("🎬 Top 100 Videos")
+        st.subheader("🎬 Top 50 Videos")
         videosDf = pd.DataFrame(topVideos)
         st.dataframe(videosDf)
         
@@ -138,36 +135,24 @@ if st.sidebar.button("Get Data"):
         videosDf['Log Likes'] = np.log1p(videosDf['Likes'])
         
 
-        # Restrict to top 10 videos for bar charts
         top10_videosDf = videosDf.nlargest(10, 'Views')
 
-
-
-
-
-
-        # Bar Chart: Top 10 Performing Videos by Views
-        fig1 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Performing Videos", text="Views", color="Likes")
+        # Bar Chart: Top 10 Performing Videos 
+        fig1 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Videos", text="Views", color="Likes")
         fig1.update_traces(texttemplate='%{text}', textposition='outside')
-        fig1.update_layout(autosize=True, width=None, height=1000)
+        fig1.update_layout(autosize=True, width=None, height=750)
         st.plotly_chart(fig1)
         
         # Scatter Plot: Likes vs. Views
         fig2 = px.scatter(videosDf, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
-        fig2.update_layout(autosize=True, width=None, height=1000)
+        fig2.update_layout(autosize=True, width=None, height=750)
         st.plotly_chart(fig2)
-        
-        # Bar Chart: Top 10 Video Duration vs. Views
-        fig3 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Video Duration vs. Views", color="Duration (s)", text="Views")
-        fig3.update_traces(texttemplate='%{text}', textposition='outside')
-        fig3.update_layout(autosize=True, width=None, height=600)
-        st.plotly_chart(fig3)
         
         # Heatmap: Correlation between Views, Likes, Comments, and Duration
         dfCorr = videosDf[["Views", "Likes", "Comments", "Duration (s)"]].corr()
-        fig4 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
-        fig4.update_layout(autosize=True, width=None, height=1000)
-        st.plotly_chart(fig4)
+        fig3 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
+        fig3.update_layout(autosize=True, width=None, height=750)
+        st.plotly_chart(fig3)
         
         
         

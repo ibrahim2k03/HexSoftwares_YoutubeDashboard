@@ -52,8 +52,6 @@ def channelStats(channelID):
         return {
             "Subscribers": int(stats["subscriberCount"]),
             "Total Videos": int(stats["videoCount"]),
-            "Total Views": int(stats["viewCount"]),
-            "Total Likes": total_likes, 
             "Likes from Views": f"{(total_likes / int(stats['viewCount'])) * 100:.2f}%",
             "Average Views per Video": int(stats["viewCount"]) / int(stats["videoCount"]),
             "Average Likes per Video": total_likes / int(stats["videoCount"]),
@@ -114,16 +112,14 @@ if st.sidebar.button("Get Data"):
     if stats:
         st.subheader("📌 Channel Statistics")
         
-        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(8)
+        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(6)
 
         cols[0].metric("Subscribers", stats["Subscribers"])
         cols[1].metric("Total Videos", stats["Total Videos"])
-        cols[2].metric("Total Views", stats["Total Views"],)
-        cols[3].metric("Total Likes", stats["Total Likes"])
-        cols[4].metric("Likes from Views", stats["Likes from Views"])
-        cols[5].metric("Avg Views per Video", round(stats["Average Views per Video"]))
-        cols[6].metric("Avg Likes per Video", round(stats["Average Likes per Video"]))
-        cols[7].metric("Avg Comments per Video", round(stats["Average Comments per Video"]))
+        cols[2].metric("Likes from Views", stats["Likes from Views"])
+        cols[3].metric("Avg Views per Video", round(stats["Average Views per Video"]))
+        cols[4].metric("Avg Likes per Video", round(stats["Average Likes per Video"]))
+        cols[5].metric("Avg Comments per Video", round(stats["Average Comments per Video"]))
     
     topVideos = getTopVideos(channelID)
     

@@ -33,7 +33,7 @@ st.markdown(
 
 youtube = build("youtube", "v3", developerKey=API)
 
-def extract_channel_id(url):
+def getChennelID(url):
     pattern_channel_id = r"youtube\.com\/channel\/([a-zA-Z0-9_-]+)"
     pattern_custom_handle = r"youtube\.com\/@([a-zA-Z0-9_-]+)"
     
@@ -136,7 +136,7 @@ st.title("📊 YouTube Data Dashboard")
 channelURL = st.sidebar.text_input("Enter YouTube Channel URL", "https://www.youtube.com/@Fireship")
 
 if st.sidebar.button("Get Data"):
-    channelID = extract_channel_id(channelURL)
+    channelID = getChennelID(channelURL)
     
     if channelID:
         stats = channelStats(channelID)

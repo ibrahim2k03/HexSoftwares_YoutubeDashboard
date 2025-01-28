@@ -133,7 +133,7 @@ def getTopVideos(channelID):
 # ---------------------- User Interface ---------------------- #
 st.title("📊 YouTube Data Dashboard")
 
-channelURL = st.sidebar.text_input("Enter YouTube Channel URL", "https://www.youtube.com/@Fireship")
+channelURL = st.sidebar.text_input("Enter YouTube Channel URL", "")
 
 if st.sidebar.button("Get Data"):
     channelID = getChennelID(channelURL)

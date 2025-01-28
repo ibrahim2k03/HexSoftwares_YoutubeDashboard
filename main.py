@@ -5,11 +5,11 @@ import plotly.figure_factory as ff
 from googleapiclient.discovery import build
 import isodate
 import numpy as np
+import re
 
 st.set_page_config(layout="wide")
 api_key = st.secrets["api_key"]["myAPIKey"]
 API = api_key
-
 
 st.markdown(
     """
@@ -31,9 +31,38 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-
 youtube = build("youtube", "v3", developerKey=API)
+
+def extract_channel_id(url):
+    pattern_channel_id = r"youtube\.com\/channel\/([a-zA-Z0-9_-]+)"
+    pattern_custom_handle = r"youtube\.com\/@([a-zA-Z0-9_-]+)"
+    
+    match_channel_id = re.search(pattern_channel_id, url)
+    if match_channel_id:
+        return match_channel_id.group(1)
+    
+    match_custom_handle = re.search(pattern_custom_handle, url)
+    if match_custom_handle:
+        custom_handle = match_custom_handle.group(1)
+        try:
+            request = youtube.search().list(
+                part="snippet",
+                q=custom_handle,
+                type="channel",
+                maxResults=1
+            )
+            response = request.execute()
+            if "items" in response and len(response["items"]) > 0:
+                return response["items"][0]["snippet"]["channelId"]
+            else:
+                st.error(f"No channel found for handle: @{custom_handle}")
+                return None
+        except Exception as e:
+            st.error(f"Error resolving custom handle: {e}")
+            return None
+    
+    st.error("Invalid YouTube channel URL. Please provide a valid URL.")
+    return None
 
 def channelStats(channelID):
     try:
@@ -104,53 +133,48 @@ def getTopVideos(channelID):
 # ---------------------- User Interface ---------------------- #
 st.title("📊 YouTube Data Dashboard")
 
-channelID = st.sidebar.text_input("Enter YouTube Channel ID", "UCphTF9wHwhCt-BzIq-s4V-g")
+channelURL = st.sidebar.text_input("Enter YouTube Channel URL", "https://www.youtube.com/@Fireship")
 
 if st.sidebar.button("Get Data"):
-    stats = channelStats(channelID)
+    channelID = extract_channel_id(channelURL)
     
-    if stats:
-        st.subheader("📌 Channel Statistics")
+    if channelID:
+        stats = channelStats(channelID)
         
-        cols = st.columns(2) if st.session_state.get("mobile") else st.columns(6)
+        if stats:
+            st.subheader("📌 Channel Statistics")
+            
+            cols = st.columns(2) if st.session_state.get("mobile") else st.columns(6)
 
-        cols[0].metric("Subscribers", stats["Subscribers"])
-        cols[1].metric("Total Videos", stats["Total Videos"])
-        cols[2].metric("Likes from Views", stats["Likes from Views"])
-        cols[3].metric("Avg Views per Video", round(stats["Average Views per Video"]))
-        cols[4].metric("Avg Likes per Video", round(stats["Average Likes per Video"]))
-        cols[5].metric("Avg Comments per Video", round(stats["Average Comments per Video"]))
-    
-    topVideos = getTopVideos(channelID)
-    
-    if topVideos:
-        st.subheader("🎬 Top 50 Videos")
-        videosDf = pd.DataFrame(topVideos)
-        st.dataframe(videosDf)
+            cols[0].metric("Subscribers", stats["Subscribers"])
+            cols[1].metric("Total Videos", stats["Total Videos"])
+            cols[2].metric("Likes from Views", stats["Likes from Views"])
+            cols[3].metric("Avg Views per Video", round(stats["Average Views per Video"]))
+            cols[4].metric("Avg Likes per Video", round(stats["Average Likes per Video"]))
+            cols[5].metric("Avg Comments per Video", round(stats["Average Comments per Video"]))
         
-        # Additional statistics
-        videosDf['Log Views'] = np.log1p(videosDf['Views'])
-        videosDf['Log Likes'] = np.log1p(videosDf['Likes'])
+        topVideos = getTopVideos(channelID)
         
+        if topVideos:
+            st.subheader("🎬 Top 50 Videos")
+            videosDf = pd.DataFrame(topVideos)
+            st.dataframe(videosDf)
+            
+            top10_videosDf = videosDf.nlargest(10, 'Views')
 
-        top10_videosDf = videosDf.nlargest(10, 'Views')
-
-        # Bar Chart: Top 10 Performing Videos 
-        fig1 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Videos", text="Views", color="Likes")
-        fig1.update_traces(texttemplate='%{text}', textposition='outside')
-        fig1.update_layout(autosize=True, width=None, height=750)
-        st.plotly_chart(fig1)
-        
-        # Scatter Plot: Likes vs. Views
-        fig2 = px.scatter(videosDf, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
-        fig2.update_layout(autosize=True, width=None, height=750)
-        st.plotly_chart(fig2)
-        
-        # Heatmap: Correlation between Views, Likes, Comments, and Duration
-        dfCorr = videosDf[["Views", "Likes", "Comments", "Duration (s)"]].corr()
-        fig3 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
-        fig3.update_layout(autosize=True, width=None, height=750)
-        st.plotly_chart(fig3)
-        
-        
-        
+            # Bar Chart: Top 10 Performing Videos 
+            fig1 = px.bar(top10_videosDf, x="Title", y="Views", title="Top 10 Videos", text="Views", color="Likes")
+            fig1.update_traces(texttemplate='%{text}', textposition='outside')
+            fig1.update_layout(autosize=True, width=None, height=750)
+            st.plotly_chart(fig1)
+            
+            # Scatter Plot: Likes vs. Views
+            fig2 = px.scatter(videosDf, x="Views", y="Likes", size="Comments", title="Views vs. Likes", hover_data=["Title"])
+            fig2.update_layout(autosize=True, width=None, height=750)
+            st.plotly_chart(fig2)
+            
+            # Heatmap: Correlation between Views, Likes, Comments, and Duration
+            dfCorr = videosDf[["Views", "Likes", "Comments", "Duration (s)"]].corr()
+            fig3 = px.imshow(dfCorr, text_auto=True, title="🔥 Heatmap: Correlation between Video Stats")
+            fig3.update_layout(autosize=True, width=None, height=750)
+            st.plotly_chart(fig3)
